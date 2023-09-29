@@ -133,11 +133,11 @@ if device == "cuda":
 print(device)
 
 
-env = gym.make('BipedalWalker-v3')
-env_test = gym.make('BipedalWalker-v3', render_mode="human")
+#env = gym.make('BipedalWalker-v3')
+#env_test = gym.make('BipedalWalker-v2', render_mode="human")
 
-#env = gym.make('BipedalWalkerHardcore-v3')
-#env_test = gym.make('BipedalWalkerHardcore-v3', render_mode="human")
+env = gym.make('BipedalWalkerHardcore-v3')
+env_test = gym.make('BipedalWalkerHardcore-v3', render_mode="human")
 
 
 
@@ -170,7 +170,7 @@ try:
 
     #--------------------testing loaded model-------------------------
 
-    for test_episode in range(10):
+    for test_episode in range(0):
         state = env_test.reset()[0]
         rewards = []
 
@@ -190,6 +190,7 @@ try:
     with open('replay_buffer', 'rb') as file:
         dict = pickle.load(file)
         replay_buffer = dict['buffer']
+        algo.actor.x_coor = dict['x_coor']
         if len(replay_buffer)>=2056 and not policy_training: policy_training = True
     print('buffer loaded, buffer length', len(replay_buffer))
 
@@ -201,18 +202,28 @@ except:
 
 for i in range(num_episodes):
     #processor releave
-    if policy_training: time.sleep(0.5)
+    if policy_training: time.sleep(1.0)
     state, Return = env.reset()[0], 0.0
+    replay_buffer.purge()
+    done_steps, rewards, terminal_reward = 0, [], 100.0
+
 
     #-------------------decreases dependence on random seed: ------------------
-    if not policy_training and len(replay_buffer.buffer)<2560:
+    if not policy_training and len(replay_buffer.buffer)<5000:
         algo.actor.apply(init_weights)
 
 
+    #-------------slighlty random initial configuration as in OpenAI Pendulum-------------
+    action = 0.3*max_action.to('cpu').numpy()*np.random.uniform(-1.0, 1.0, size=action_dim)
+
+    for t in range(0,2):
+        next_state, reward, done, info, _ = env.step(action)
+        state = next_state
+        rewards.append(reward)
+
     #------------------------training-------------------------
 
-    replay_buffer.purge()
-    done_steps, rewards, terminal_reward = 0, [], 100.0
+
 
     for steps in range(10000):
 
@@ -259,7 +270,7 @@ for i in range(num_episodes):
         torch.save(algo.critic_target.state_dict(), 'critic_target_model.pt')
         #print("saving... len = ", len(replay_buffer), end="")
         with open('replay_buffer', 'wb') as file:
-            pickle.dump({'buffer': replay_buffer}, file)
+            pickle.dump({'buffer': replay_buffer, 'x_coor': algo.actor.x_coor}, file)
         #print(" > done")
 
         #====================================================
