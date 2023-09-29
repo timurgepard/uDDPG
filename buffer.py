@@ -5,7 +5,7 @@ import torch
 
 # we use cache to append transitions, and then update buffer to collect Q Returns, purging cache at the episode end.
 class ReplayBuffer:
-    def __init__(self, device, n_steps, capacity=1000000):
+    def __init__(self, device, n_steps, capacity=300000):
         self.buffer, self.capacity =  deque(maxlen=capacity), capacity
         self.indices, self.indexes, self.probs = [], np.array([]), []
         self.cache = []
