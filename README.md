@@ -8,6 +8,9 @@ reward itself is divided by n_steps, so that Return can be normalized between -1
 
 Old transitions contain Returns from old polices, it is solved by sampling with prioirty regarding history.
 
+Epsilon decreases in Actor with exponential decay:
+![image](https://github.com/timurgepard/uDDPG/assets/13238473/1eca6cc7-f3ea-4f1e-a2f6-8bb82e68fb9d)
+
 The paper contains various experiments and complicated, but the code here is up-to-date and simplified.
 https://ieeexplore.ieee.org/document/9945743
 
