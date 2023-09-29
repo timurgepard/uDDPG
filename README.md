@@ -13,6 +13,5 @@ https://ieeexplore.ieee.org/document/9945743
 
 T. Ishuov, Z. Otarbay and M. Folgheraiter, "A Concept of Unbiased Deep Deterministic Policy Gradient for Better Convergence in Bipedal Walker," 2022 International Conference on Smart Information Systems and Technologies (SIST), Nur-Sultan, Kazakhstan, 2022, pp. 1-6, doi: 10.1109/SIST54437.2022.9945743.
 
-Epsilon decreases in Actor with exponential decay:
+Epsilon decreases in Actor with exponential decay: 3e^-x
 
-![image](https://github.com/timurgepard/uDDPG/assets/13238473/1eca6cc7-f3ea-4f1e-a2f6-8bb82e68fb9d)
