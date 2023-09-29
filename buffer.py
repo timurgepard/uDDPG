@@ -5,7 +5,7 @@ import torch
 
 # we use cache to append transitions, and then update buffer to collect Q Returns, purging cache at the episode end.
 class ReplayBuffer:
-    def __init__(self, device, n_steps, capacity=100000):
+    def __init__(self, device, n_steps, capacity=1000000):
         self.buffer, self.capacity =  deque(maxlen=capacity), capacity
         self.indices, self.indexes, self.probs = [], np.array([]), []
         self.cache = []
@@ -35,8 +35,7 @@ class ReplayBuffer:
                     Return = 0.0
                     discount = 1.0
                     for k in range(t, t+self.n_steps): # k = [0..99], [1..100], [2..101] ... [199..298]
-                        reward_k = self.cache[k][2]
-                        Return = Return + discount*reward_k # Bellman Equation: r_0 + 0.99*r_1 + (0.99^2)*r_2 + ...
+                        Return += discount* self.cache[k][2] #  Bellman Equation: r_0 + 0.99*r_1 + (0.99^2)*r_2 + ... (reward_k = self.cache[k][2])
                         discount *= 0.99
                     
                     Return = math.tanh(Return) # this makes tail less important, Return is in [-1.0, 1.0]
