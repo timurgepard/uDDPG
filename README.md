@@ -8,4 +8,5 @@ reward itself is divided by n_steps, so that Return can be normalized between -1
 
 Old transitions contain Returns from old polices, it is solved by sampling with prioirty regarding history.
 
+This paper contains various experiments and outdated, but the code here is up-to-date and simplified.
 https://ieeexplore.ieee.org/document/9945743
