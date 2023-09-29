@@ -32,7 +32,7 @@ class Actor(nn.Module):
     def forward(self, state, mean=False):
         x = self.max_action*self.net(state)
         if mean: return x
-        if self.accuracy(): x = x + torch.normal(torch.zeros_like(x), self.std)
+        if self.accuracy(): x += torch.normal(torch.zeros_like(x), self.std)
         return x.clamp(-1.0, 1.0)
 
         
