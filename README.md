@@ -1,4 +1,4 @@
-Monte-Carlo version of DDPG for BipedalWalker-v3 environment (A concept)
+uDDPG: Monte-Carlo version of DDPG for BipedalWalker-v3 environment (A concept)
 
 The idea is to do 1 update by Monte-Carlo, 1 update by Temporal Difference.
 The roll-out is n-steps (200), and is collected after done to have "a full length roll-out" for an each step.
