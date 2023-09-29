@@ -23,16 +23,18 @@ class Actor(nn.Module):
         self.x_coor = 0.0
 
     def accuracy(self):
-        if self.std>0.0:
+        if self.std>0.01:
             self.std = 3.0 * self.max_action * math.exp(-self.x_coor)
             self.x_coor += 3e-5
+            return True
+        return False
 
     def forward(self, state, mean=False):
-        mu = self.max_action*self.net(state)
-        if mean: return mu
-        self.accuracy()
-        x = mu + torch.normal(torch.zeros_like(mu), self.std)
+        x = self.max_action*self.net(state)
+        if mean: return x
+        if self.accuracy(): x = x + torch.normal(torch.zeros_like(x), self.std)
         return x.clamp(-1.0, 1.0)
+
         
         
 # Define the critic network
