@@ -24,7 +24,7 @@ class Actor(nn.Module):
 
     def accuracy(self):
         if self.std>1e-3:
-            self.std = 3.0 * self.max_action * math.exp(-self.x_coor) + 0.03
+            self.std = 3.0 * self.max_action * math.exp(-self.x_coor) + 0.01
             self.x_coor += 3e-5
             return True
         return False
