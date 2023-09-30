@@ -277,18 +277,18 @@ for i in range(num_episodes):
 
         #-----------------validation-------------------------
 
-
         if total_rewards[i]>=330 or (i>=100 and i%100==0):
             test_episodes = 1000 if total_rewards[i]>=330 else 10
+            env_val = env if test_episodes == 1000 else env_test
             print("Validation... ", test_episodes, " episodes")
             test_rewards = []
 
             for test_episode in range(test_episodes):
-                state = env.reset()[0]
+                state = env_val.reset()[0]
                 done_steps, terminal_reward = 0, 0.0
-                for steps in range(1,10000):
+                for steps in range(1,1000):
                     action = algo.select_action(state, mean=True)
-                    next_state, reward, done, info , _ = env.step(action)
+                    next_state, reward, done, info , _ = env_val.step(action)
                     state = next_state
                     
                     if done:
