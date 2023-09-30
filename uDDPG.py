@@ -277,12 +277,15 @@ for i in range(num_episodes):
 
         #-----------------validation-------------------------
 
-        if total_rewards[i]>=330:
-            print("Validation... 100 episodes")
 
-            for test_episode in range(1000):
+        if total_rewards[i]>=330 or (i>=100 and i%100==0):
+            test_episodes = 1000 if total_rewards[i]>=330 else 10
+            print("Validation... ", test_episodes, " episodes")
+            test_rewards = []
+
+            for test_episode in range(test_episodes):
                 state = env.reset()[0]
-                done_steps, test_rewards, terminal_reward = 0, [], 0.0
+                done_steps, terminal_reward = 0, 0.0
                 for steps in range(1,10000):
                     action = algo.select_action(state, mean=True)
                     next_state, reward, done, info , _ = env.step(action)
@@ -301,7 +304,7 @@ for i in range(num_episodes):
                 validate_reward = np.mean(test_rewards[-100:])
                 print(f"trial {test_episode}:, Rtrn = {test_rewards[test_episode]}, Average100 = {validate_reward:.2f}")
 
-                if validate_reward>=300: print("Average of 100 trials = 300 !!!CONGRATULATIONS!!!")
+                if test_episodes==1000 and validate_reward>=300: print("Average of 100 trials = 300 !!!CONGRATULATIONS!!!")
                     
 
         #====================================================
