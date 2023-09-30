@@ -12,6 +12,32 @@ import time
 from actor_critic import Actor, Critic
 from buffer import ReplayBuffer
 
+
+option = 1
+
+if option == 1:
+    env = gym.make('BipedalWalker-v3')
+    env_test = gym.make('BipedalWalker-v3', render_mode="human")
+    limit_steps = 10000
+
+elif option == 2:
+    env = gym.make('BipedalWalkerHardcore-v3')
+    env_test = gym.make('BipedalWalkerHardcore-v3', render_mode="human")
+    limit_steps = 50
+
+
+# 4 random seeds
+#r1 = random.randint(0,2**32-1)
+#r2 = random.randint(0,2**32-1)
+r1, r2 = 3684114277, 3176436971
+r1, r2 = 1375924064, 4183630884
+r1, r2 = 1495103356, 3007657725
+r1, r2 = 830143436, 167430301
+print(r1, ", ", r2)
+torch.manual_seed(r1)
+np.random.seed(r2)
+
+
 #used to create random seeds in Actor -> less dependendance on the specific neural network random seed.
 def init_weights(m):
     if isinstance(m, nn.Linear):
@@ -71,7 +97,7 @@ class uDDPG(object):
             self.actor_update(state)
             self.sync_target()
            
-    # Tempora Difference update
+    # Temporal Difference update
     def td(self, batch):
         if batch != None:
             state, action, reward, _, next_state = batch
@@ -133,12 +159,6 @@ if device == "cuda":
 print(device)
 
 
-#env = gym.make('BipedalWalker-v3')
-#env_test = gym.make('BipedalWalker-v2', render_mode="human")
-
-env = gym.make('BipedalWalkerHardcore-v3')
-env_test = gym.make('BipedalWalkerHardcore-v3', render_mode="human")
-
 
 
 
@@ -146,7 +166,6 @@ state_dim = env.observation_space.shape[0]
 action_dim= env.action_space.shape[0]
 
 hidden_dim = 256
-
 n_steps = 200
 
 print('action space high', env.action_space.high)
@@ -155,7 +174,7 @@ max_action = torch.FloatTensor(env.action_space.high).to(device) if env.action_s
 replay_buffer = ReplayBuffer(device, n_steps)
 algo = uDDPG(state_dim, action_dim, hidden_dim, device, max_action)
 
-num_episodes, counter, total_rewards, total_steps, test_rewards, policy_training = 1000000, 0, [], [], [], False
+num_episodes, total_rewards, total_steps, test_rewards, policy_training = 1000000, [], [], [], False
 
 
 #load existing models
@@ -190,7 +209,10 @@ try:
     with open('replay_buffer', 'rb') as file:
         dict = pickle.load(file)
         replay_buffer = dict['buffer']
+        algo.actor.std = dict['std']
         algo.actor.x_coor = dict['x_coor']
+        limit_steps = dict['limit_steps']
+        total_steps = dict['total_steps']
         if len(replay_buffer)>=2056 and not policy_training: policy_training = True
     print('buffer loaded, buffer length', len(replay_buffer))
 
@@ -201,31 +223,33 @@ except:
 
 
 for i in range(num_episodes):
-    #processor releave
-    if policy_training: time.sleep(1.0)
-    state, Return = env.reset()[0], 0.0
+    done_steps, rewards, terminal_reward, stop = 0, [], 0.0, False
+    state = env.reset()[0]
     replay_buffer.purge()
-    done_steps, rewards, terminal_reward = 0, [], 100.0
+    
 
+    #---------------------------1. processor releave --------------------------
+    #---------------------2. decreases dependence on random seed: ---------------
+    #-----------3. slighlty random initial configuration as in OpenAI Pendulum----
+    #-----------prevents often appearance of the same transitions in buffer-------
 
-    #-------------------decreases dependence on random seed: ------------------
+    #1
+    if policy_training: time.sleep(2.0)
+    #2
     if not policy_training and len(replay_buffer.buffer)<5000:
         algo.actor.apply(init_weights)
-
-
-    #-------------slighlty random initial configuration as in OpenAI Pendulum-------------
+    #3
     action = 0.3*max_action.to('cpu').numpy()*np.random.uniform(-1.0, 1.0, size=action_dim)
 
     for t in range(0,2):
         next_state, reward, done, info, _ = env.step(action)
         state = next_state
         rewards.append(reward)
+    
 
-    #------------------------training-------------------------
+    #------------------------------training------------------------------
 
-
-
-    for steps in range(10000):
+    for steps in range(1, 1000000):
 
         if len(replay_buffer.buffer)>=5000 and not policy_training:
             print("started training")
@@ -233,10 +257,10 @@ for i in range(num_episodes):
 
         action = algo.select_action(state, mean=False)
         next_state, reward, done, info, _ = env.step(action)
-        
+        if steps>=limit_steps: stop = True
 
-        if done:
-            if done_steps==0: terminal_reward = reward
+        if done or stop:
+            if done: terminal_reward = reward
             if abs(terminal_reward) >=50: reward = terminal_reward/n_steps
             done_steps += 1
 
@@ -247,62 +271,69 @@ for i in range(num_episodes):
         state = next_state
         
         
-        if policy_training: algo.train(i)
+        if policy_training: algo.train(steps)
         if done_steps > n_steps: break
             
-
-        
 
     replay_buffer.update()
     total_rewards.append(np.sum(rewards))
     average_reward = np.mean(total_rewards[-100:])
 
+    episode_steps = steps-n_steps
+    total_steps.append(episode_steps)
+    average_steps = np.mean(total_steps[-100:])
+    if policy_training and i>=100: limit_steps = int(average_steps) + 5 + int(0.05*average_steps)
 
-    print(f"Ep {i}: Rtrn = {total_rewards[i]:.2f}, eps = {algo.actor.std:.2f} | ep steps = {steps-n_steps}")
-    #====================================================
 
-    #--------------------saving-------------------------
+    print(f"Ep {i}: Rtrn = {total_rewards[i]:.2f}, eps = {algo.actor.std:.2f} | ep steps = {episode_steps}")
+
+
 
     if policy_training:
+
+        #--------------------saving-------------------------
             
         torch.save(algo.actor.state_dict(), 'actor_model.pt')
         torch.save(algo.critic.state_dict(), 'critic_model.pt')
         torch.save(algo.critic_target.state_dict(), 'critic_target_model.pt')
         #print("saving... len = ", len(replay_buffer), end="")
         with open('replay_buffer', 'wb') as file:
-            pickle.dump({'buffer': replay_buffer, 'x_coor': algo.actor.x_coor}, file)
+            pickle.dump({'buffer': replay_buffer, 'std': algo.actor.std, 'x_coor': algo.actor.x_coor, 'limit_steps':limit_steps, 'total_steps':total_steps}, file)
         #print(" > done")
 
-        #====================================================
 
         #-----------------validation-------------------------
 
         if total_rewards[i]>=330 or (i>=100 and i%100==0):
-            test_episodes = 1000 if total_rewards[i]>=330 else 10
+            test_episodes = 1000 if total_rewards[i]>=330 else 5
             env_val = env if test_episodes == 1000 else env_test
-            print("Validation... ", test_episodes, " episodes")
+            print("Validation... ", test_episodes, " epsodes")
             test_rewards = []
 
             for test_episode in range(test_episodes):
+                done_steps, rewards, terminal_reward, stop = 0, [], 0.0, False
+
                 state = env_val.reset()[0]
-                done_steps, terminal_reward = 0, 0.0
-                for steps in range(1,2000):
+                
+                for steps in range(1,1000000):
                     action = algo.select_action(state, mean=True)
                     next_state, reward, done, info , _ = env_val.step(action)
-                    state = next_state
-                    
-                    if done:
-                        if done_steps==0: terminal_reward = reward
-                        if abs(terminal_reward)>=50: reward = reward/n_steps
+                    if steps>=limit_steps: stop = True
+
+                    if done or stop:
+                        if done: terminal_reward = reward
+                        if abs(terminal_reward) >=50: reward = terminal_reward/n_steps
                         done_steps += 1
 
                     rewards.append(reward)
+                    state = next_state
                     if done_steps>n_steps: break
+                    
 
                 test_rewards.append(np.sum(rewards))
 
                 validate_reward = np.mean(test_rewards[-100:])
-                print(f"trial {test_episode}:, Rtrn = {test_rewards[test_episode]:.2f}, Average100 = {validate_reward:.2f}")
+                print(f"trial {test_episode}:, Rtrn = {test_rewards[test_episode]:.2f}, Average 100 = {validate_reward:.2f}")
 
                 if test_episodes==1000 and validate_reward>=300: print("Average of 100 trials = 300 !!!CONGRATULATIONS!!!")
                     
