@@ -286,7 +286,7 @@ for i in range(num_episodes):
             for test_episode in range(test_episodes):
                 state = env_val.reset()[0]
                 done_steps, terminal_reward = 0, 0.0
-                for steps in range(1,1000):
+                for steps in range(1,2000):
                     action = algo.select_action(state, mean=True)
                     next_state, reward, done, info , _ = env_val.step(action)
                     state = next_state
@@ -302,7 +302,7 @@ for i in range(num_episodes):
                 test_rewards.append(np.sum(rewards))
 
                 validate_reward = np.mean(test_rewards[-100:])
-                print(f"trial {test_episode}:, Rtrn = {test_rewards[test_episode]}, Average100 = {validate_reward:.2f}")
+                print(f"trial {test_episode}:, Rtrn = {test_rewards[test_episode]:.2f}, Average100 = {validate_reward:.2f}")
 
                 if test_episodes==1000 and validate_reward>=300: print("Average of 100 trials = 300 !!!CONGRATULATIONS!!!")
                     
