@@ -118,9 +118,9 @@ class uDDPG(object):
 
         with torch.no_grad():
             next_action = self.actor(next_state, mean=True)
-            q_next_target, s2_next = self.critic_target(next_state, next_action)
+            q_next_target, s2_next_target = self.critic_target(next_state, next_action)
             q_value = reward +  0.99 * q_next_target
-            s2_value = torch.var(reward) + 0.99*s2_next
+            s2_value = torch.var(reward) + 0.99*s2_next_target
 
         q, s2 = self.critic(state, action)
         critic_loss = ReHE(q_value - q) + ReHE(s2_value-s2) #ReHE instead of MSE
