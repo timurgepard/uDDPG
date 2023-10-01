@@ -3,6 +3,9 @@ import torch
 import torch.nn as nn
 
 
+
+
+
 # Define the actor network
 class Actor(nn.Module):
     def __init__(self, state_dim, action_dim, device, hidden_dim=32, max_action=1.0):
@@ -19,12 +22,12 @@ class Actor(nn.Module):
          )
         
         self.max_action = torch.mean(max_action).item()
-        self.std = 3.0
+        self.eps = 3.0
         self.x_coor = 0.0
 
     def accuracy(self):
-        if self.std>1e-3:
-            self.std = 3.0 * self.max_action * math.exp(-self.x_coor) + 0.01
+        if self.eps>1e-3:
+            self.eps = 3.0 * self.max_action * math.exp(-self.x_coor) + 0.03
             self.x_coor += 3e-5
             return True
         return False
@@ -32,9 +35,15 @@ class Actor(nn.Module):
     def forward(self, state, mean=False):
         x = self.max_action*self.net(state)
         if mean: return x
-        if self.accuracy(): x += torch.normal(torch.zeros_like(x), self.std)
+        if self.accuracy(): x += torch.normal(torch.zeros_like(x), self.eps)
         return x.clamp(-1.0, 1.0)
 
+class Tanh2(nn.Module):
+    def __init__(self):
+        super(Tanh2, self).__init__()
+  
+    def forward(self, x):
+        return torch.tanh(x**2)
         
         
 # Define the critic network
@@ -47,9 +56,19 @@ class Critic(nn.Module):
             nn.LayerNorm(hidden_dim),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
+        )
+
+        self.mu = nn.Sequential(
             nn.Linear(hidden_dim, 1),
+            nn.Tanh()
+        )
+
+        self.s2 = nn.Sequential(
+            nn.Linear(hidden_dim, 1),
+            Tanh2()
         )
 
     def forward(self, state, action):
         x = torch.cat([state, action], -1)
-        return self.net(x)
+        x = self.net(x)
+        return self.mu(x), self.s2(x)
