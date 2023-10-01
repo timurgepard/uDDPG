@@ -14,9 +14,6 @@ class ReplayBuffer:
         self.random = np.random.default_rng()
         self.batch_size = min(max(128, self.length//300), 1024) #in order for sample to describe population
 
-    # Returns for old policies are less correct, we need to gradually forget past history.
-    def fade(self, norm_index):
-        return 0.01*np.tanh(3*norm_index**2) # ▁/▔ squashed by 0.01 for more even distrisbution
 
     def add(self, transition):
         self.cache.append(transition)
@@ -57,8 +54,14 @@ class ReplayBuffer:
             self.indices.append(self.length-1)
             self.indexes = np.array(self.indices)
             if self.length>1:
-                weights = self.fade(self.indexes/self.length)
+                #priorities are normalized between 0 and 1 and squashed by 0.01
+                #weights = 0.01*(self.indexes/self.length) #linear /
+                weights =  0.01*self.fade(self.indexes/self.length) #non-linear # ▁/▔
                 self.probs = weights/np.sum(weights)
+
+    # gradually forget past history.
+    def fade(self, norm_index):
+        return np.tanh(3*norm_index**2) 
 
 
     def sample(self):
