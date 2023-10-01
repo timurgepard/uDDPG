@@ -3,9 +3,6 @@ import torch
 import torch.nn as nn
 
 
-
-
-
 # Define the actor network
 class Actor(nn.Module):
     def __init__(self, state_dim, action_dim, device, hidden_dim=32, max_action=1.0):
