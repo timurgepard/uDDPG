@@ -8,7 +8,7 @@ reward itself is divided by n_steps, so that Return can be normalized between -1
 
 Old transitions contain Returns from old polices, it is solved by sampling with prioirty regarding history.
 
-The paper contains various experiments and complicated, but the code here is up-to-date and simplified.
+This outdated paper contains various experiments and complicated, but the code here is up-to-date and simplified.
 https://ieeexplore.ieee.org/document/9945743
 
 T. Ishuov, Z. Otarbay and M. Folgheraiter, "A Concept of Unbiased Deep Deterministic Policy Gradient for Better Convergence in Bipedal Walker," 2022 International Conference on Smart Information Systems and Technologies (SIST), Nur-Sultan, Kazakhstan, 2022, pp. 1-6, doi: 10.1109/SIST54437.2022.9945743.
