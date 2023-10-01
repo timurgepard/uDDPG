@@ -12,7 +12,8 @@ As we have access to real Return data, it would be remiss not to improve varianc
 
 Second name is Symphony:
 
-![image](https://github.com/timurgepard/uDDPG/assets/13238473/8eef6a76-1b89-42de-8f52-2375d859461b)
+![image](https://github.com/timurgepard/uDDPG/assets/13238473/27dc1b77-8d46-492a-b381-22f1d0d9c645)
+
 
 This outdated paper contains various experiments and complicated, but the code here is up-to-date and simplified.
 https://ieeexplore.ieee.org/document/9945743
