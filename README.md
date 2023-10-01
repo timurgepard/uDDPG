@@ -1,7 +1,4 @@
-uDDPG: Monte-Carlo version of DDPG for BipedalWalker-v3 environment (Symphony)
-
-![image](https://github.com/timurgepard/uDDPG/assets/13238473/8eef6a76-1b89-42de-8f52-2375d859461b)
-
+uDDPG: Monte-Carlo version of DDPG for BipedalWalker-v3 environment
 
 The idea is to do 1 update by Monte-Carlo, 1 update by Temporal Difference.
 The roll-out is n-steps (200), and is collected at each step and after done to have "a full length roll-out" for an each step.
@@ -12,6 +9,10 @@ reward itself is divided by n_steps, so that Return can be normalized between -1
 Old transitions contain Returns from old polices, it is solved by sampling with prioirty regarding history.
 
 As we have access to real Return data, it would be remiss not to improve variance.
+
+Second name is Symphony:
+
+![image](https://github.com/timurgepard/uDDPG/assets/13238473/8eef6a76-1b89-42de-8f52-2375d859461b)
 
 This outdated paper contains various experiments and complicated, but the code here is up-to-date and simplified.
 https://ieeexplore.ieee.org/document/9945743
