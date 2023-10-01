@@ -23,7 +23,7 @@ if option == 1:
 elif option == 2:
     env = gym.make('BipedalWalkerHardcore-v3')
     env_test = gym.make('BipedalWalkerHardcore-v3', render_mode="human")
-    limit_steps = 50
+    limit_steps = 70
 
 
 # 4 random seeds
@@ -53,8 +53,6 @@ def ReHE(error):
 def ReHAE(error):
     e = error.mean()
     return torch.abs(e)*torch.tanh(e)
-
-
 
 
 
@@ -105,10 +103,11 @@ class uDDPG(object):
             self.actor_update(state)
 
 
-    def critic_direct(self, state, action, q_Return): 
+    def critic_direct(self, state, action, q_Return):
 
-        q = self.critic(state, action)
-        critic_loss = ReHE(q_Return - q) #ReHE instead of MSE
+        S2 = torch.var(q_Return)
+        q, s2 = self.critic(state, action)
+        critic_loss = ReHE(q_Return - q) + ReHE(S2-s2) #ReHE instead of MSE
 
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
@@ -119,11 +118,12 @@ class uDDPG(object):
 
         with torch.no_grad():
             next_action = self.actor(next_state, mean=True)
-            q_next_target = self.critic_target(next_state, next_action)
+            q_next_target, s2_next = self.critic_target(next_state, next_action)
             q_value = reward +  0.99 * q_next_target
+            s2_value = torch.var(reward) + 0.99*s2_next
 
-        q = self.critic(state, action)
-        critic_loss = ReHE(q_value - q) #ReHE instead of MSE
+        q, s2 = self.critic(state, action)
+        critic_loss = ReHE(q_value - q) + ReHE(s2_value-s2) #ReHE instead of MSE
 
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
@@ -133,8 +133,8 @@ class uDDPG(object):
     def actor_update(self, state):
 
         action = self.actor(state, mean=True)
-        q_new_policy = self.critic(state, action)
-        actor_loss = -q_new_policy
+        q_new_policy, s2_new_policy = self.critic(state, action)
+        actor_loss = torch.exp(-q_new_policy - s2_new_policy)
         actor_loss = ReHAE(actor_loss)
 
         self.actor_optimizer.zero_grad()
@@ -189,11 +189,11 @@ try:
 
     #--------------------testing loaded model-------------------------
 
-    for test_episode in range(0):
+    for test_episode in range(10):
         state = env_test.reset()[0]
         rewards = []
 
-        for steps in range(1,1000):
+        for steps in range(1,2000):
             action = algo.select_action(state, mean=True)
             next_state, reward, done, info , _ = env_test.step(action)
             state = next_state
@@ -209,7 +209,7 @@ try:
     with open('replay_buffer', 'rb') as file:
         dict = pickle.load(file)
         replay_buffer = dict['buffer']
-        algo.actor.std = dict['std']
+        algo.actor.eps = dict['eps']
         algo.actor.x_coor = dict['x_coor']
         limit_steps = dict['limit_steps']
         total_steps = dict['total_steps']
@@ -255,6 +255,7 @@ for i in range(num_episodes):
             print("started training")
             policy_training = True
 
+
         action = algo.select_action(state, mean=False)
         next_state, reward, done, info, _ = env.step(action)
         if steps>=limit_steps: stop = True
@@ -285,7 +286,7 @@ for i in range(num_episodes):
     if policy_training and i>=100: limit_steps = int(average_steps) + 5 + int(0.05*average_steps)
 
 
-    print(f"Ep {i}: Rtrn = {total_rewards[i]:.2f}, eps = {algo.actor.std:.2f} | ep steps = {episode_steps}")
+    print(f"Ep {i}: Rtrn = {total_rewards[i]:.2f}, eps = {algo.actor.eps:.2f} | ep steps = {episode_steps}")
 
 
 
@@ -298,13 +299,13 @@ for i in range(num_episodes):
         torch.save(algo.critic_target.state_dict(), 'critic_target_model.pt')
         #print("saving... len = ", len(replay_buffer), end="")
         with open('replay_buffer', 'wb') as file:
-            pickle.dump({'buffer': replay_buffer, 'std': algo.actor.std, 'x_coor': algo.actor.x_coor, 'limit_steps':limit_steps, 'total_steps':total_steps}, file)
+            pickle.dump({'buffer': replay_buffer, 'eps': algo.actor.eps, 'x_coor': algo.actor.x_coor, 'limit_steps':limit_steps, 'total_steps':total_steps}, file)
         #print(" > done")
 
 
         #-----------------validation-------------------------
 
-        if total_rewards[i]>=330 or (i>=100 and i%100==0):
+        if total_rewards[i]>=330 or (i>500 and i%500==0):
             test_episodes = 1000 if total_rewards[i]>=330 else 5
             env_val = env if test_episodes == 1000 else env_test
             print("Validation... ", test_episodes, " epsodes")
