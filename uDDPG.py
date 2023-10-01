@@ -234,7 +234,7 @@ for i in range(num_episodes):
     #-----------prevents often appearance of the same transitions in buffer-------
 
     #1
-    if policy_training: time.sleep(2.0)
+    if policy_training: time.sleep(1.0)
     #2
     if not policy_training and len(replay_buffer.buffer)<5000:
         algo.actor.apply(init_weights)
