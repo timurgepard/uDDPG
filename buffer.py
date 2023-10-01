@@ -16,7 +16,7 @@ class ReplayBuffer:
 
     # Returns for old policies are less correct, we need to gradually forget past history.
     def fade(self, norm_index):
-        return 0.03*np.tanh(3*norm_index**2) # ▁/▔ squashed by 0.03 for more even distrisbution
+        return 0.01*np.tanh(3*norm_index**2) # ▁/▔ squashed by 0.01 for more even distrisbution
 
     def add(self, transition):
         self.cache.append(transition)
