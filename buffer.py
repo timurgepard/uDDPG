@@ -2,17 +2,19 @@ from collections import deque
 import numpy as np
 import math
 import torch
+import random
 
 # we use cache to append transitions, and then update buffer to collect Q Returns, purging cache at the episode end.
 class ReplayBuffer:
-    def __init__(self, device, n_steps, capacity=300*1024):
-        self.buffer, self.capacity, self.length =  deque(maxlen=capacity), capacity, 0
-        self.indices, self.indexes, self.probs = [], np.array([]), []
-        self.cache = []
+    def __init__(self, device, n_steps, capacity=300*2560):
+        self.buffer, self.capacity, self.length =  deque(maxlen=capacity), capacity, 0 #buffer is prioritised limited memory
+        self.indices, self.indexes, self.probs = [], np.array([]), [] #for priorities
+        self.cache = [] #cache is episodic memory
+        self.storage = [] # storage contains everything
         self.device = device
         self.n_steps = n_steps
         self.random = np.random.default_rng()
-        self.batch_size = min(max(128, self.length//300), 1024) #in order for sample to describe population
+        self.batch_size = min(max(128, self.length//300), 2560) #in order for sample to describe population
 
 
     def add(self, transition):
@@ -45,10 +47,12 @@ class ReplayBuffer:
     
     def store(self, transition):
         self.buffer.append(transition)
+        self.storage.append(transition)
+        
 
         if self.length < self.capacity:
             self.length = len(self.buffer)
-            self.batch_size = min(max(128, self.length//300), 1024)
+            self.batch_size = min(max(128, self.length//300), 2560)
 
             #updating priorities: less priority for older data
             self.indices.append(self.length-1)
@@ -59,6 +63,7 @@ class ReplayBuffer:
                 weights =  0.01*self.fade(self.indexes/self.length) #non-linear # ▁/▔
                 self.probs = weights/np.sum(weights)
 
+            
     # gradually forget past history.
     def fade(self, norm_index):
         return np.tanh(3*norm_index**2) 
@@ -67,6 +72,18 @@ class ReplayBuffer:
     def sample(self):
         batch_indices = self.random.choice(self.indexes, p=self.probs, size=self.batch_size)
         batch = [self.buffer[indx-1] for indx in batch_indices]
+        states, actions, rewards, Return, next_states = map(np.vstack, zip(*batch))
+
+        return (
+            torch.FloatTensor(states).to(self.device),
+            torch.FloatTensor(actions).to(self.device),
+            torch.FloatTensor(rewards).to(self.device),
+            torch.FloatTensor(Return).to(self.device),
+            torch.FloatTensor(next_states).to(self.device),
+        )
+    
+    def retrieve(self):
+        batch = random.sample(self.storage, self.batch_size)
         states, actions, rewards, Return, next_states = map(np.vstack, zip(*batch))
 
         return (
