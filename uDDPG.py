@@ -13,7 +13,7 @@ from actor_critic import Actor, Critic
 from buffer import ReplayBuffer
 
 
-option = 2
+option = 1
 
 if option == 1:
     env = gym.make('BipedalWalker-v3')
