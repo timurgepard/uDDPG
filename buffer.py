@@ -10,7 +10,7 @@ class ReplayBuffer:
         self.buffer, self.capacity, self.length =  deque(maxlen=capacity), capacity, 0 #buffer is prioritised limited memory
         self.indices, self.indexes, self.probs = [], np.array([]), [] #for priorities
         self.cache = [] #cache is episodic memory
-        self.storage = [] # storage contains everything
+        self.storage = [] # storage contains everything, for future use
         self.device = device
         self.n_steps = n_steps
         self.random = np.random.default_rng()
@@ -82,6 +82,7 @@ class ReplayBuffer:
             torch.FloatTensor(next_states).to(self.device),
         )
     
+    # this is for future use
     def retrieve(self):
         batch = random.sample(self.storage, self.batch_size)
         states, actions, rewards, Return, next_states = map(np.vstack, zip(*batch))
