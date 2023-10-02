@@ -23,7 +23,7 @@ if option == 1:
 elif option == 2:
     env = gym.make('BipedalWalkerHardcore-v3')
     env_test = gym.make('BipedalWalkerHardcore-v3', render_mode="human")
-    limit_steps = 50
+    limit_steps = 70
 
 
 # 4 random seeds
@@ -123,7 +123,7 @@ class uDDPG(object):
 
             #full z^2 = x^2 + 2xy + y^2
             #covariance = torch.sum((reward - torch.mean(reward)) * 0.99 * (q_next_target - torch.mean(q_next_target))) / (state.shape[0] - 1)
-            #s2_value = torch.var(reward) + 2.0*covariance + 0.9801*s2_next 
+            #s2_value = torch.var(reward) + 2.0*covariance + 0.9801*s2_next
             #simplified z^2 = x^2 + 0.01y*y + y^2, we assume small covariance with next Return in ideal case
             s2_value = torch.var(reward) + 0.99*s2_next
 
@@ -182,6 +182,21 @@ algo = uDDPG(state_dim, action_dim, hidden_dim, device, max_action)
 num_episodes, total_rewards, total_steps, test_rewards, policy_training = 1000000, [], [], [], False
 
 
+try:
+    print("loading buffer...")
+    with open('replay_buffer', 'rb') as file:
+        dict = pickle.load(file)
+        replay_buffer = dict['buffer']
+        algo.actor.eps = dict['eps']
+        algo.actor.x_coor = dict['x_coor']
+        limit_steps = dict['limit_steps']
+        total_steps = dict['total_steps']
+        if len(replay_buffer)>=5000 and not policy_training: policy_training = True
+    print('buffer loaded, buffer length', len(replay_buffer))
+
+except:
+    print("problem during loading buffer")
+
 #load existing models
 
 try:
@@ -194,11 +209,11 @@ try:
 
     #--------------------testing loaded model-------------------------
 
-    for test_episode in range(10):
+    for test_episode in range(3):
         state = env_test.reset()[0]
         rewards = []
 
-        for steps in range(1,2000):
+        for steps in range(1,limit_steps+n_steps):
             action = algo.select_action(state, mean=True)
             next_state, reward, done, info , _ = env_test.step(action)
             state = next_state
@@ -209,20 +224,6 @@ try:
 except:
     print("problem during loading models")
 
-try:
-    print("loading buffer...")
-    with open('replay_buffer', 'rb') as file:
-        dict = pickle.load(file)
-        replay_buffer = dict['buffer']
-        algo.actor.eps = dict['eps']
-        algo.actor.x_coor = dict['x_coor']
-        limit_steps = dict['limit_steps']
-        total_steps = dict['total_steps']
-        if len(replay_buffer)>=2056 and not policy_training: policy_training = True
-    print('buffer loaded, buffer length', len(replay_buffer))
-
-except:
-    print("problem during loading buffer")
 
 
 
@@ -239,7 +240,7 @@ for i in range(num_episodes):
     #-----------prevents often appearance of the same transitions in buffer-------
 
     #1
-    if policy_training: time.sleep(2.0)
+    if policy_training: time.sleep(1.0)
     #2
     if not policy_training and len(replay_buffer.buffer)<5000:
         algo.actor.apply(init_weights)
@@ -310,7 +311,7 @@ for i in range(num_episodes):
 
         #-----------------validation-------------------------
 
-        if total_rewards[i]>=330 or (i>500 and i%500==0):
+        if total_rewards[i]>=330 or (i>=500 and i%500==0):
             test_episodes = 1000 if total_rewards[i]>=330 else 5
             env_val = env if test_episodes == 1000 else env_test
             print("Validation... ", test_episodes, " epsodes")
