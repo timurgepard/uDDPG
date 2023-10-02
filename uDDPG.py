@@ -13,7 +13,7 @@ from actor_critic import Actor, Critic
 from buffer import ReplayBuffer
 
 
-option = 1
+option = 2
 
 if option == 1:
     env = gym.make('BipedalWalker-v3')
@@ -23,7 +23,7 @@ if option == 1:
 elif option == 2:
     env = gym.make('BipedalWalkerHardcore-v3')
     env_test = gym.make('BipedalWalkerHardcore-v3', render_mode="human")
-    limit_steps = 70
+    limit_steps = 50
 
 
 # 4 random seeds
@@ -118,9 +118,14 @@ class uDDPG(object):
 
         with torch.no_grad():
             next_action = self.actor(next_state, mean=True)
-            q_next_target, s2_next_target = self.critic_target(next_state, next_action)
+            q_next_target, s2_next = self.critic_target(next_state, next_action)
             q_value = reward +  0.99 * q_next_target
-            s2_value = torch.var(reward) + 0.99*s2_next_target
+
+            #full z^2 = x^2 + 2xy + y^2
+            #covariance = torch.sum((reward - torch.mean(reward)) * (q_next_target - torch.mean(q_next_target))) / (state.shape[0] - 1)
+            #s2_value = torch.var(reward) + 2.0*covariance + 0.9801*s2_next 
+            #simplified z^2 = x^2 + 0.01y*y + y^2, we assume small covariance with next Return in ideal case
+            s2_value = torch.var(reward) + 0.99*s2_next
 
         q, s2 = self.critic(state, action)
         critic_loss = ReHE(q_value - q) + ReHE(s2_value-s2) #ReHE instead of MSE
@@ -234,7 +239,7 @@ for i in range(num_episodes):
     #-----------prevents often appearance of the same transitions in buffer-------
 
     #1
-    if policy_training: time.sleep(1.0)
+    if policy_training: time.sleep(2.0)
     #2
     if not policy_training and len(replay_buffer.buffer)<5000:
         algo.actor.apply(init_weights)
