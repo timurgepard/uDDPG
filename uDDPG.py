@@ -288,7 +288,7 @@ for i in range(num_episodes):
     episode_steps = steps-n_steps
     total_steps.append(episode_steps)
     average_steps = np.mean(total_steps[-100:])
-    if policy_training and i>=100: limit_steps = int(average_steps) + 5 + int(0.05*average_steps)
+    if policy_training: limit_steps = int(average_steps) + 5 + int(0.05*average_steps)
 
 
     print(f"Ep {i}: Rtrn = {total_rewards[i]:.2f}, eps = {algo.actor.eps:.2f} | ep steps = {episode_steps}")
