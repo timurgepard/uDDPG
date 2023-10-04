@@ -8,9 +8,9 @@ reward itself is divided by n_steps, so that Return can be normalized between -1
 
 Old transitions contain Returns from old polices, it is solved by sampling with prioirty regarding history.
 
-As we have access to real Return data, it would be remiss not to improve variance.
 
-Second name is Symphony:
+
+Second name is Symphony: As we have access to real Return data, it would be remiss not to improve variance.
 
 ![image](https://github.com/timurgepard/uDDPG/assets/13238473/27dc1b77-8d46-492a-b381-22f1d0d9c645)
 
