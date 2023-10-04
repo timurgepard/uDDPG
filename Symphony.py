@@ -133,7 +133,6 @@ class ReplayBuffer:
         self.buffer, self.capacity, self.length =  deque(maxlen=capacity), capacity, 0 #buffer is prioritised limited memory
         self.indices, self.indexes, self.probs = [], np.array([]), [] #for priorities
         self.cache = [] #cache is episodic memory
-        self.storage = [] # storage contains everything, for future use
         self.device = device
         self.n_steps = n_steps
         self.random = np.random.default_rng()
@@ -170,7 +169,6 @@ class ReplayBuffer:
     
     def store(self, transition):
         self.buffer.append(transition)
-        self.storage.append(transition)
         
 
         if self.length < self.capacity:
@@ -195,19 +193,6 @@ class ReplayBuffer:
     def sample(self):
         batch_indices = self.random.choice(self.indexes, p=self.probs, size=self.batch_size)
         batch = [self.buffer[indx-1] for indx in batch_indices]
-        states, actions, rewards, Return, next_states = map(np.vstack, zip(*batch))
-
-        return (
-            torch.FloatTensor(states).to(self.device),
-            torch.FloatTensor(actions).to(self.device),
-            torch.FloatTensor(rewards).to(self.device),
-            torch.FloatTensor(Return).to(self.device),
-            torch.FloatTensor(next_states).to(self.device),
-        )
-    
-    # this is for future use
-    def retrieve(self):
-        batch = random.sample(self.storage, self.batch_size)
         states, actions, rewards, Return, next_states = map(np.vstack, zip(*batch))
 
         return (
@@ -287,10 +272,10 @@ class uDDPG(object):
             q_value = reward +  0.99 * q_next_target
 
             #full z^2 = x^2 + 2xy + y^2
-            #covariance = torch.sum((reward - torch.mean(reward)) * 0.99 * (q_next_target - torch.mean(q_next_target))) / (state.shape[0] - 1)
-            #s2_value = torch.var(reward) + 2.0*covariance + 0.9801*s2_next
+            covariance = torch.sum((reward - torch.mean(reward)) * 0.99 * (q_next_target - torch.mean(q_next_target))) / (reward.shape[0] - 1)
+            s2_value = torch.var(reward) + 2.0*covariance + 0.9801*s2_next
             #simplified z^2 = x^2 + 0.01y*y + y^2, we assume small covariance with next Return in ideal case
-            s2_value = torch.var(reward) + 0.99*s2_next
+            #s2_value = torch.var(reward) + 0.99*s2_next
 
         q, s2 = self.critic(state, action)
         critic_loss = ReHE(q_value - q) + ReHE(s2_value-s2) #ReHE instead of MSE
@@ -432,12 +417,15 @@ for i in range(num_episodes):
         if steps>=limit_steps: stop = True
 
         if done or stop:
+            if done_steps == 0: rewards.append(reward)
             if done: terminal_reward = reward
             if abs(terminal_reward) >=50: reward = terminal_reward/n_steps
             done_steps += 1
+        else:
+            rewards.append(reward)
 
 
-        rewards.append(reward)
+        
         replay_buffer.add([state, action, reward/n_steps, next_state]) # we crudely bring reward closer to 0.0
         replay_buffer.update()
         state = next_state
@@ -493,11 +481,13 @@ for i in range(num_episodes):
                     if steps>=limit_steps: stop = True
 
                     if done or stop:
+                        if done_steps == 0: rewards.append(reward)
                         if done: terminal_reward = reward
                         if abs(terminal_reward) >=50: reward = terminal_reward/n_steps
                         done_steps += 1
+                    else:
+                        rewards.append(reward)
 
-                    rewards.append(reward)
                     state = next_state
                     if done_steps>n_steps: break
                     
