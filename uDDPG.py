@@ -168,7 +168,8 @@ class ReplayBuffer:
             self.indexes = np.array(self.indices)
             if self.length>1:
                 #priorities are normalized between 0 and 1 and squashed by 0.01
-                weights = 0.01*(self.indexes/self.length) #linear /
+                #weights = 0.01*(self.indexes/self.length) #linear /
+                weights =  0.01*self.fade(self.indexes/self.length) #non-linear # ▁/▔
                 self.probs = weights/np.sum(weights)
 
 
