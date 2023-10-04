@@ -13,9 +13,10 @@ from collections import deque
 import math
 
 option = 1
+start_time = 5000
 
 if option == 1:
-    env = gym.make('BipedalWalker-v3')
+    env = gym.make('BipedalWalker-v3', render_mode="human")
     env_test = gym.make('BipedalWalker-v3', render_mode="human")
     variable_steps = False
     limit_steps = 10000
@@ -103,27 +104,48 @@ class Critic(nn.Module):
     def __init__(self, state_dim, action_dim, hidden_dim=32):
         super(Critic, self).__init__()
 
-        self.net = nn.Sequential(
+        self.netA = nn.Sequential(
             nn.Linear(state_dim+action_dim, hidden_dim),
             nn.LayerNorm(hidden_dim),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
         )
 
-        self.mu = nn.Sequential(
+        self.netB = nn.Sequential(
+            nn.Linear(state_dim+action_dim, hidden_dim),
+            nn.LayerNorm(hidden_dim),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+        )
+
+        self.muA = nn.Sequential(
             nn.Linear(hidden_dim, 1),
             nn.Tanh()
         )
 
-        self.s2 = nn.Sequential(
+        self.s2A = nn.Sequential(
             nn.Linear(hidden_dim, 1),
             Tanh2()
         )
 
-    def forward(self, state, action):
+        self.muB = nn.Sequential(
+            nn.Linear(hidden_dim, 1),
+            nn.Tanh()
+        )
+
+        self.s2B = nn.Sequential(
+            nn.Linear(hidden_dim, 1),
+            Tanh2()
+        )
+
+    def forward(self, state, action, united=False):
         x = torch.cat([state, action], -1)
-        x = self.net(x)
-        return self.mu(x), self.s2(x)
+        xA, xB = self.netA(x), self.netB(x)
+        qA, qB, s2A, s2B = self.muA(xA), self.muB(xB), self.s2A(xA), self.s2B(xB)
+        if not united: return (qA, qB, s2A, s2B)
+        stackA = torch.stack([qA,qB], dim=-1)
+        stackB = torch.stack([s2A,s2B], dim=-1)
+        return torch.min(stackA, dim=-1).values, torch.min(stackB, dim=-1).values
 
 
 
@@ -268,17 +290,18 @@ class uDDPG(object):
 
         with torch.no_grad():
             next_action = self.actor(next_state, mean=True)
-            q_next_target, s2_next = self.critic_target(next_state, next_action)
+            q_next_target, s2_next = self.critic_target(next_state, next_action, united=True)
             q_value = reward +  0.99 * q_next_target
+            s2_value = torch.var(reward) + 0.99*s2_next
 
             #full z^2 = x^2 + 2xy + y^2
             #covariance = torch.sum((reward - torch.mean(reward)) * 0.99 * (q_next_target - torch.mean(q_next_target))) / (reward.shape[0] - 1)
             #s2_value = torch.var(reward) + 2.0*covariance + 0.9801*s2_next
             #simplified z^2 = x^2 + 0.01y*y + y^2, we assume small covariance with next Return in ideal case
-            s2_value = torch.var(reward) + 0.99*s2_next
+            #s2_value = torch.var(reward) + 0.99*s2_next
 
-        q, s2 = self.critic(state, action)
-        critic_loss = ReHE(q_value - q) + ReHE(s2_value-s2) #ReHE instead of MSE
+        qA, qB, s2A, s2B = self.critic(state, action, united=False)
+        critic_loss = ReHE(q_value - qA) + ReHE(q_value - qB) + ReHE(s2_value-s2A) + ReHE(s2_value-s2B) #ReHE instead of MSE
 
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
@@ -288,7 +311,7 @@ class uDDPG(object):
     def actor_update(self, state):
 
         action = self.actor(state, mean=True)
-        q_new_policy, s2_new_policy = self.critic(state, action)
+        q_new_policy, s2_new_policy = self.critic(state, action, united=True)
         actor_loss = torch.exp(-q_new_policy - s2_new_policy)
         actor_loss = ReHAE(actor_loss)
 
@@ -341,7 +364,7 @@ try:
         algo.actor.x_coor = dict['x_coor']
         limit_steps = dict['limit_steps']
         total_steps = dict['total_steps']
-        if len(replay_buffer)>=5000 and not policy_training: policy_training = True
+        if len(replay_buffer)>=start_time and not policy_training: policy_training = True
     print('buffer loaded, buffer length', len(replay_buffer))
 
 except:
@@ -392,7 +415,7 @@ for i in range(num_episodes):
     #1
     if policy_training: time.sleep(1.0)
     #2
-    if not policy_training and len(replay_buffer.buffer)<5000:
+    if not policy_training and len(replay_buffer.buffer)<start_time:
         algo.actor.apply(init_weights)
     #3
     action = 0.3*max_action.to('cpu').numpy()*np.random.uniform(-1.0, 1.0, size=action_dim)
@@ -407,7 +430,7 @@ for i in range(num_episodes):
 
     for steps in range(1, 1000000):
 
-        if len(replay_buffer.buffer)>=5000 and not policy_training:
+        if len(replay_buffer.buffer)>=start_time and not policy_training:
             print("started training")
             policy_training = True
 
@@ -464,7 +487,7 @@ for i in range(num_episodes):
 
         #-----------------validation-------------------------
 
-        if total_rewards[i]>=330 or (i>=500 and i%500==0):
+        if total_rewards[i]>=330 or (i>=100 and i%100==0):
             test_episodes = 1000 if total_rewards[i]>=330 else 5
             env_val = env if test_episodes == 1000 else env_test
             print("Validation... ", test_episodes, " epsodes")
