@@ -278,8 +278,8 @@ class uDDPG(object):
     def critic_direct(self, state, action, q_Return):
 
         S2 = torch.var(q_Return)
-        q, s2 = self.critic(state, action)
-        critic_loss = ReHE(q_Return - q) + ReHE(S2-s2) #ReHE instead of MSE
+        qA, qB, s2A, s2B = self.critic(state, action)
+        critic_loss = ReHE(q_Return - qA) + ReHE(q_Return - qB) + ReHE(S2-s2A) + ReHE(S2-s2B) #ReHE instead of MSE
 
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
