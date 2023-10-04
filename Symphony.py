@@ -13,7 +13,6 @@ from collections import deque
 import math
 
 option = 1
-start_time = 5000
 
 if option == 1:
     env = gym.make('BipedalWalker-v3')
@@ -81,12 +80,12 @@ class Actor(nn.Module):
          )
         
         self.max_action = torch.mean(max_action).item()
-        self.eps = 3.0
+        self.eps = 0.7
         self.x_coor = 0.0
 
     def accuracy(self):
         if self.eps>1e-3:
-            self.eps = 3.0 * self.max_action * math.exp(-self.x_coor) + 0.03
+            self.eps = 0.7 * self.max_action * math.exp(-self.x_coor) + 0.03
             self.x_coor += 3e-5
             return True
         return False
@@ -273,10 +272,10 @@ class uDDPG(object):
             q_value = reward +  0.99 * q_next_target
 
             #full z^2 = x^2 + 2xy + y^2
-            covariance = torch.sum((reward - torch.mean(reward)) * 0.99 * (q_next_target - torch.mean(q_next_target))) / (reward.shape[0] - 1)
-            s2_value = torch.var(reward) + 2.0*covariance + 0.9801*s2_next
+            #covariance = torch.sum((reward - torch.mean(reward)) * 0.99 * (q_next_target - torch.mean(q_next_target))) / (reward.shape[0] - 1)
+            #s2_value = torch.var(reward) + 2.0*covariance + 0.9801*s2_next
             #simplified z^2 = x^2 + 0.01y*y + y^2, we assume small covariance with next Return in ideal case
-            #s2_value = torch.var(reward) + 0.99*s2_next
+            s2_value = torch.var(reward) + 0.99*s2_next
 
         q, s2 = self.critic(state, action)
         critic_loss = ReHE(q_value - q) + ReHE(s2_value-s2) #ReHE instead of MSE
@@ -342,7 +341,7 @@ try:
         algo.actor.x_coor = dict['x_coor']
         limit_steps = dict['limit_steps']
         total_steps = dict['total_steps']
-        if len(replay_buffer)>=start_time and not policy_training: policy_training = True
+        if len(replay_buffer)>=5000 and not policy_training: policy_training = True
     print('buffer loaded, buffer length', len(replay_buffer))
 
 except:
@@ -393,7 +392,7 @@ for i in range(num_episodes):
     #1
     if policy_training: time.sleep(1.0)
     #2
-    if not policy_training and len(replay_buffer.buffer)<start_time:
+    if not policy_training and len(replay_buffer.buffer)<5000:
         algo.actor.apply(init_weights)
     #3
     action = 0.3*max_action.to('cpu').numpy()*np.random.uniform(-1.0, 1.0, size=action_dim)
@@ -408,7 +407,7 @@ for i in range(num_episodes):
 
     for steps in range(1, 1000000):
 
-        if len(replay_buffer.buffer)>=start_time and not policy_training:
+        if len(replay_buffer.buffer)>=5000 and not policy_training:
             print("started training")
             policy_training = True
 
@@ -465,7 +464,7 @@ for i in range(num_episodes):
 
         #-----------------validation-------------------------
 
-        if total_rewards[i]>=330 or (i>=100 and i%100==0):
+        if total_rewards[i]>=330 or (i>=500 and i%500==0):
             test_episodes = 1000 if total_rewards[i]>=330 else 5
             env_val = env if test_episodes == 1000 else env_test
             print("Validation... ", test_episodes, " epsodes")
