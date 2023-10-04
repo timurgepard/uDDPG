@@ -18,11 +18,13 @@ option = 1
 if option == 1:
     env = gym.make('BipedalWalker-v3')
     env_test = gym.make('BipedalWalker-v3', render_mode="human")
+    variable_steps = False
     limit_steps = 10000
 
 elif option == 2:
     env = gym.make('BipedalWalkerHardcore-v3')
     env_test = gym.make('BipedalWalkerHardcore-v3', render_mode="human")
+    variable_steps = True
     limit_steps = 70
 
 
@@ -289,7 +291,7 @@ for i in range(num_episodes):
     episode_steps = steps-n_steps
     total_steps.append(episode_steps)
     average_steps = np.mean(total_steps[-100:])
-    if policy_training: limit_steps = int(average_steps) + 5 + int(0.05*average_steps)
+    if policy_training and variable_steps: limit_steps = int(average_steps) + 5 + int(0.05*average_steps)
 
 
     print(f"Ep {i}: Rtrn = {total_rewards[i]:.2f}, eps = {algo.actor.eps:.2f} | ep steps = {episode_steps}")
@@ -299,14 +301,14 @@ for i in range(num_episodes):
     if policy_training:
 
         #--------------------saving-------------------------
-            
-        torch.save(algo.actor.state_dict(), 'actor_model.pt')
-        torch.save(algo.critic.state_dict(), 'critic_model.pt')
-        torch.save(algo.critic_target.state_dict(), 'critic_target_model.pt')
-        #print("saving... len = ", len(replay_buffer), end="")
-        with open('replay_buffer', 'wb') as file:
-            pickle.dump({'buffer': replay_buffer, 'eps': algo.actor.eps, 'x_coor': algo.actor.x_coor, 'limit_steps':limit_steps, 'total_steps':total_steps}, file)
-        #print(" > done")
+        if (i>=100 and i%100==0): 
+            torch.save(algo.actor.state_dict(), 'actor_model.pt')
+            torch.save(algo.critic.state_dict(), 'critic_model.pt')
+            torch.save(algo.critic_target.state_dict(), 'critic_target_model.pt')
+            #print("saving... len = ", len(replay_buffer), end="")
+            with open('replay_buffer', 'wb') as file:
+                pickle.dump({'buffer': replay_buffer, 'eps': algo.actor.eps, 'x_coor': algo.actor.x_coor, 'limit_steps':limit_steps, 'total_steps':total_steps}, file)
+            #print(" > done")
 
 
         #-----------------validation-------------------------
