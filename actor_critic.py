@@ -55,15 +55,9 @@ class Critic(nn.Module):
             nn.ReLU(),
         )
 
-        self.mu = nn.Sequential(
-            nn.Linear(hidden_dim, 1),
-            nn.Tanh()
-        )
+        self.mu = nn.Linear(hidden_dim, 1)
 
-        self.s2 = nn.Sequential(
-            nn.Linear(hidden_dim, 1),
-            Tanh2()
-        )
+        self.s2 = nn.Linear(hidden_dim, 1)
 
     def forward(self, state, action):
         x = torch.cat([state, action], -1)
