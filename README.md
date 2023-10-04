@@ -10,7 +10,7 @@ Old transitions contain Returns from old polices, it is solved by sampling with 
 
 
 
-Second name is Symphony: as we have access to real Return data, it would be remiss not to improve variance.
+Second name is Symphony: as we have access to real Return data, it would be remiss not to improve variance. And added TD3 instead of DDPG
 
 ![image](https://github.com/timurgepard/uDDPG/assets/13238473/27dc1b77-8d46-492a-b381-22f1d0d9c645)
 
