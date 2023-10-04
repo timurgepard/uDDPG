@@ -13,6 +13,7 @@ from collections import deque
 import math
 
 option = 1
+start_time = 5000
 
 if option == 1:
     env = gym.make('BipedalWalker-v3')
@@ -341,7 +342,7 @@ try:
         algo.actor.x_coor = dict['x_coor']
         limit_steps = dict['limit_steps']
         total_steps = dict['total_steps']
-        if len(replay_buffer)>=5000 and not policy_training: policy_training = True
+        if len(replay_buffer)>=start_time and not policy_training: policy_training = True
     print('buffer loaded, buffer length', len(replay_buffer))
 
 except:
@@ -392,7 +393,7 @@ for i in range(num_episodes):
     #1
     if policy_training: time.sleep(1.0)
     #2
-    if not policy_training and len(replay_buffer.buffer)<5000:
+    if not policy_training and len(replay_buffer.buffer)<start_time:
         algo.actor.apply(init_weights)
     #3
     action = 0.3*max_action.to('cpu').numpy()*np.random.uniform(-1.0, 1.0, size=action_dim)
@@ -407,7 +408,7 @@ for i in range(num_episodes):
 
     for steps in range(1, 1000000):
 
-        if len(replay_buffer.buffer)>=5000 and not policy_training:
+        if len(replay_buffer.buffer)>=start_time and not policy_training:
             print("started training")
             policy_training = True
 
@@ -464,7 +465,7 @@ for i in range(num_episodes):
 
         #-----------------validation-------------------------
 
-        if total_rewards[i]>=330 or (i>=500 and i%500==0):
+        if total_rewards[i]>=330 or (i>=100 and i%100==0):
             test_episodes = 1000 if total_rewards[i]>=330 else 5
             env_val = env if test_episodes == 1000 else env_test
             print("Validation... ", test_episodes, " epsodes")
