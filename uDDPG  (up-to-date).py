@@ -98,12 +98,12 @@ class Actor(nn.Module):
          )
         
         self.max_action = torch.mean(max_action).item()
-        self.eps = 0.7
+        self.eps = 0.77
         self.x_coor = 0.0
 
     def accuracy(self):
         if self.eps>0.001:
-            self.eps = 0.7 * self.max_action * math.exp(-self.x_coor)
+            self.eps = 0.7 * self.max_action * math.exp(-self.x_coor) + 0.07
             self.x_coor += 3e-5
             return True
         return False
