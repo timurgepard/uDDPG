@@ -50,6 +50,30 @@ def ReHAE(error):
     return torch.abs(e)*torch.tanh(e)
 
 
+#testing model
+def testing(env, algo, limit_steps, test_episodes):
+    if test_episodes<1: return
+    episode_return = []
+
+    for test_episode in range(test_episodes):
+        state = env.reset()[0]
+        rewards = []
+
+        for steps in range(1,limit_steps+1):
+            action = algo.select_action(state, mean=True)
+            next_state, reward, done, info , _ = env.step(action)
+            state = next_state
+            rewards.append(reward)
+            if done: break
+
+        episode_return.append(np.sum(rewards))
+
+        validate_return = np.mean(episode_return[-100:])
+        print(f"trial {test_episode}:, Rtrn = {episode_return[test_episode]:.2f}, Average 100 = {validate_return:.2f}")
+
+        if test_episodes==1000 and validate_return>=300: print("Average of 100 trials = 300 !!!CONGRATULATIONS!!!")
+
+
 class Tanh2(nn.Module):
     def __init__(self):
         super(Tanh2, self).__init__()
@@ -78,7 +102,7 @@ class Actor(nn.Module):
         self.x_coor = 0.0
 
     def accuracy(self):
-        if self.eps>1e-3:
+        if self.eps>0.01:
             self.eps = 0.7 * self.max_action * math.exp(-self.x_coor) + 0.03
             self.x_coor += 3e-5
             return True
@@ -271,10 +295,10 @@ class uDDPG(object):
             q_value = reward +  0.99 * q_next_target
             s2_value = torch.var(reward) + 0.99*s2_next
 
-            #full z^2 = x^2 + 2xy + y^2
+            #full z^2 = x^2 + 2xy + y^2 (though bigger entropy/randomness)
             #covariance = torch.sum((reward - torch.mean(reward)) * 0.99 * (q_next_target - torch.mean(q_next_target))) / (reward.shape[0] - 1)
             #s2_value = torch.var(reward) + 2.0*covariance + 0.9801*s2_next
-            #simplified z^2 = x^2 + 0.01y*y + y^2, we assume small covariance with next Return in ideal case
+            #simplified z^2 = x^2 + 0.01y*y + y^2, we program small covariance with next Return in ideal case
             #s2_value = torch.var(reward) + 0.99*s2_next
 
         qA, qB, s2A, s2B = self.critic(state, action, united=False)
@@ -359,17 +383,7 @@ try:
 
     #--------------------testing loaded model-------------------------
 
-    for test_episode in range(3):
-        state = env_test.reset()[0]
-        rewards = []
-
-        for steps in range(1,limit_steps+n_steps):
-            action = algo.select_action(state, mean=True)
-            next_state, reward, done, info , _ = env_test.step(action)
-            state = next_state
-            rewards.append(reward)
-            if done: break
-        print(f"Validation, Rtrn = {np.sum(rewards):.2f}, buffer len {len(replay_buffer)}")
+    testing(env_test, algo, limit_steps, 10)
 
 except:
     print("problem during loading models")
@@ -424,7 +438,6 @@ for i in range(num_episodes):
         else:
             rewards.append(reward)
 
-
         
         replay_buffer.add([state, action, reward/n_steps, next_state]) # we crudely bring reward closer to 0.0
         replay_buffer.update()
@@ -468,36 +481,8 @@ for i in range(num_episodes):
             test_episodes = 1000 if total_rewards[i]>=330 else 5
             env_val = env if test_episodes == 1000 else env_test
             print("Validation... ", test_episodes, " epsodes")
-            test_rewards = []
-
-            for test_episode in range(test_episodes):
-                done_steps, rewards, terminal_reward, stop = 0, [], 0.0, False
-
-                state = env_val.reset()[0]
-                
-                for steps in range(1,1000000):
-                    action = algo.select_action(state, mean=True)
-                    next_state, reward, done, info , _ = env_val.step(action)
-                    if steps>=limit_steps: stop = True
-
-                    if done or stop:
-                        if done_steps == 0: rewards.append(reward)
-                        if done: terminal_reward = reward
-                        if abs(terminal_reward) >=50: reward = terminal_reward/n_steps
-                        done_steps += 1
-                    else:
-                        rewards.append(reward)
-
-                    state = next_state
-                    if done_steps>n_steps: break
-                    
-
-                test_rewards.append(np.sum(rewards))
-
-                validate_reward = np.mean(test_rewards[-100:])
-                print(f"trial {test_episode}:, Rtrn = {test_rewards[test_episode]:.2f}, Average 100 = {validate_reward:.2f}")
-
-                if test_episodes==1000 and validate_reward>=300: print("Average of 100 trials = 300 !!!CONGRATULATIONS!!!")
+            
+            testing(env_val, algo, limit_steps, test_episodes)
                     
 
         #====================================================
