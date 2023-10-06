@@ -12,20 +12,13 @@ import random
 from collections import deque
 import math
 
-option = 1
+
 start_time = 5000
 
-if option == 1:
-    env = gym.make('BipedalWalker-v3', render_mode="human")
-    env_test = gym.make('BipedalWalker-v3', render_mode="human")
-    variable_steps = False
-    limit_steps = 10000
-
-elif option == 2:
-    env = gym.make('BipedalWalkerHardcore-v3')
-    env_test = gym.make('BipedalWalkerHardcore-v3', render_mode="human")
-    variable_steps = True
-    limit_steps = 70
+env = gym.make('BipedalWalker-v3')
+env_test = gym.make('BipedalWalker-v3', render_mode="human")
+variable_steps = False
+limit_steps = 10000
 
 
 # 4 random seeds
@@ -152,14 +145,11 @@ class Critic(nn.Module):
 # we use cache to append transitions, and then update buffer to collect Q Returns, purging cache at the episode end.
 class ReplayBuffer:
     def __init__(self, device, n_steps, capacity=300*2560):
-        self.buffer, self.capacity, self.length =  deque(maxlen=capacity), capacity, 0 #buffer is prioritised limited memory
-        self.indices, self.indexes, self.probs = [], np.array([]), [] #for priorities
-        self.cache = [] #cache is episodic memory
+        self.buffer, self.cache, self.capacity, self.length =  deque(maxlen=capacity), [], capacity, 0 #buffer is prioritised limited memory
         self.device = device
         self.n_steps = n_steps
         self.random = np.random.default_rng()
         self.batch_size = min(max(128, self.length//300), 2560) #in order for sample to describe population
-
 
     def add(self, transition):
         self.cache.append(transition)
@@ -191,29 +181,16 @@ class ReplayBuffer:
     
     def store(self, transition):
         self.buffer.append(transition)
-        
-
-        if self.length < self.capacity:
-            self.length = len(self.buffer)
-            self.batch_size = min(max(128, self.length//300), 2560)
-
-            #updating priorities: less priority for older data
-            self.indices.append(self.length-1)
-            self.indexes = np.array(self.indices)
-            if self.length>1:
-                #priorities are normalized between 0 and 1 and squashed by 0.01
-                #weights = 0.01*(self.indexes/self.length) #linear /
-                weights =  0.01*self.fade(self.indexes/self.length) #non-linear # ▁/▔
-                self.probs = weights/np.sum(weights)
-
-            
-    # gradually forget past history.
-    def fade(self, norm_index):
-        return np.tanh(3*norm_index**2) 
+        self.length = len(self.buffer)
+        self.batch_size = min(max(128, self.length//300), 2560)
 
 
     def sample(self):
-        batch_indices = self.random.choice(self.indexes, p=self.probs, size=self.batch_size)
+        indexes = np.array(list(range(self.length)))
+        weights = 0.003*(indexes/self.length)
+        probs = weights/np.sum(weights)
+
+        batch_indices = self.random.choice(indexes, p=probs, size=self.batch_size)
         batch = [self.buffer[indx-1] for indx in batch_indices]
         states, actions, rewards, Return, next_states = map(np.vstack, zip(*batch))
 
