@@ -298,6 +298,7 @@ class uDDPG(object):
             #full z^2 = x^2 + 2xy + y^2 (though bigger entropy/randomness)
             #covariance = torch.sum((reward - torch.mean(reward)) * 0.99 * (q_next_target - torch.mean(q_next_target))) / (reward.shape[0] - 1)
             #s2_value = torch.var(reward) + 2.0*covariance + 0.9801*s2_next
+            
             #simplified z^2 = x^2 + 0.01y*y + y^2, we program small covariance with next Return in ideal case
             #s2_value = torch.var(reward) + 0.99*s2_next
 
