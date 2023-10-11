@@ -1,15 +1,6 @@
 uDDPG: Monte-Carlo version of DDPG for BipedalWalker-v3 environment
 
-The idea is to do 1 update by Monte-Carlo, 1 update by Temporal Difference.
-The roll-out is n-steps (200), and is collected at each step and after done to have "a full length roll-out" for each step.
-If the terminal reward occurs, it is divided by n_steps.
 
-reward itself is divided by n_steps, so that Return can be normalized between -1 and 1, the tail is squashed by tanh function.
-
-Old transitions contain Returns from old polices, it is solved by sampling with prioirty regarding history.
-
-
-Update: as we have access to real Return data, it would be remiss not to improve variance. And added TD3 instead of DDPG
 
 ![image](https://github.com/timurgepard/uDDPG/assets/13238473/27dc1b77-8d46-492a-b381-22f1d0d9c645)
 
