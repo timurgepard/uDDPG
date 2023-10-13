@@ -1,11 +1,13 @@
 uDDPG: Monte-Carlo version of DDPG for BipedalWalker-v3 environment
 
-Explanation is in Paperback version of thisbook (not eBook): https://www.amazon.com/dp/B0CKYWHPF5
+![image](https://github.com/timurgepard/uDDPG/assets/13238473/27dc1b77-8d46-492a-b381-22f1d0d9c645)
+
+Explanation is in Paperback version of this book (not eBook): https://www.amazon.com/dp/B0CKYWHPF5
 ![image](https://github.com/timurgepard/uDDPG/assets/13238473/3b27e75c-bcfd-4c0d-9ddd-b0fd012b18e2)
 
 
 
-![image](https://github.com/timurgepard/uDDPG/assets/13238473/27dc1b77-8d46-492a-b381-22f1d0d9c645)
+
 
 
 This outdated paper contains various experiments and complicated, but the code here is up-to-date and simplified.
