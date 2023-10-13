@@ -2,7 +2,7 @@ uDDPG: Monte-Carlo version of DDPG for BipedalWalker-v3 environment
 
 ![image](https://github.com/timurgepard/uDDPG/assets/13238473/27dc1b77-8d46-492a-b381-22f1d0d9c645)
 
-I wrote the book with careful explanation, it is in the 4th section, Paperback version (not eBook): https://www.amazon.com/dp/B0CKYWHPF5
+I wrote the book with a careful explanation, it is in the 4th section, Paperback version (not eBook): https://www.amazon.com/dp/B0CKYWHPF5
 ![image](https://github.com/timurgepard/uDDPG/assets/13238473/57e719d9-0084-4495-87fe-f842f31bdfaa)
 
 
